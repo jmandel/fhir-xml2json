@@ -66,79 +66,76 @@
   <xsl:template name="element">
     <xsl:param name="path" />
 
-    <!-- open curly brace if this element contains child nodes &
-         doesn't have @value -->
-    <xsl:variable name="isObject" select="not(./@value) and count(./*) > 0" />
+    <xsl:choose>
+      <!-- if we have @value attr in current element, just output it -->
+      <xsl:when test="@value">
+        <xsl:call-template name="value">
+          <xsl:with-param name="path" select="$path" />
+          <xsl:with-param name="value" select="@value" />
+        </xsl:call-template>
+      </xsl:when>
 
-    <xsl:if test="$isObject">{</xsl:if>
+      <xsl:otherwise>
+        <!-- open curly brace if this element contains child nodes &
+             doesn't have @value -->
 
-    <xsl:for-each-group select="*" group-by="local-name()">
-      <xsl:variable name="currentName"
-                    select="name(current-group()[1])" />
+        <xsl:variable name="isObject" select="not(./@value) and count(./*) > 0" />
+        <xsl:if test="$isObject">{</xsl:if>
 
-      <xsl:variable name="currentPath"
-                    select="concat($path, '.', $currentName)" />
+        <xsl:if test="$path = local-name()">
+          "resourceType": "<xsl:value-of select="local-name()" />",
+        </xsl:if>
 
+        <xsl:for-each-group select="*" group-by="local-name()">
+          <xsl:variable name="currentName"
+                        select="name(current-group()[1])" />
 
-      <!-- <xsl:message terminate="no"> -->
-      <!--   Current path is <xsl:value-of select="$currentPath" /> -->
-      <!-- </xsl:message> -->
+          <xsl:variable name="currentPath"
+                        select="concat($path, '.', $currentName)" />
 
-      <xsl:variable name="max"
-                    select="key('element-by-path', $currentPath, $elementsDoc)[1]/*:max/@value"
-                    />
+          <xsl:variable name="max"
+                        select="key('element-by-path', $currentPath, $elementsDoc)[1]/*:max/@value"
+                        />
 
-      <xsl:variable name="isArray"
-                    select="$max = '*' or (current-group()[1]/@value
-                            and count(current-group()) > 1)" />
+          <xsl:variable name="isArray"
+                        select="$max = '*' or (current-group()[1]/@value
+                                and count(current-group()) > 1)" />
 
-      <xsl:if test="not(name() = 'text' and ./status)"> <!-- skip
-                                                             text for
-                                                             now -->
+          <xsl:if test="not(name() = 'text' and ./status)"> <!-- skip
+                                                                 text
+                                                                 for now -->
 
-        "<xsl:value-of select="name()" />": <xsl:if test="$isArray">[</xsl:if>
+            <!-- open array if needed -->
+            "<xsl:value-of select="name()" />": <xsl:if test="$isArray">[</xsl:if>
 
-        <xsl:for-each select="current-group()">
-          <xsl:choose>
-            <xsl:when test="@value">
-              <xsl:call-template name="value">
-                <xsl:with-param name="path" select="$currentPath" />
-                <xsl:with-param name="value" select="@value" />
+            <xsl:for-each select="current-group()">
+              <xsl:call-template name="element">
+                <xsl:with-param name="path">
+                  <xsl:choose>
+                    <xsl:when test="string-length($path) > 0">
+                      <xsl:value-of select="concat($path, '.', local-name())" />
+                    </xsl:when>
+                    <xsl:otherwise>
+                      <xsl:value-of select="local-name()" />
+                    </xsl:otherwise>
+                  </xsl:choose>
+                </xsl:with-param>
               </xsl:call-template>
-            </xsl:when>
-            <xsl:otherwise>
-              <xsl:call-template name="processElement">
-                <xsl:with-param name="path" select="$path" />
-              </xsl:call-template>
-            </xsl:otherwise>
-          </xsl:choose>
-          <xsl:if test="position() != last()">,</xsl:if>
-        </xsl:for-each>
 
-        <xsl:if test="$isArray">]</xsl:if>
-        <xsl:if test="position() != last()">,</xsl:if>
-      </xsl:if>
-    </xsl:for-each-group>
+              <xsl:if test="position() != last()">,</xsl:if>
+            </xsl:for-each>
 
-    <xsl:if test="$isObject">}</xsl:if>
+            <xsl:if test="$isArray">]</xsl:if>
+            <xsl:if test="position() != last()">,</xsl:if>
+          </xsl:if>
+        </xsl:for-each-group>
+
+        <xsl:if test="$isObject">}</xsl:if>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
-  <xsl:template name="processElement">
-    <xsl:param name="path" />
-    <xsl:call-template name="element">
-      <xsl:with-param name="path">
-        <xsl:choose>
-          <xsl:when test="string-length($path) > 0">
-            <xsl:value-of select="concat($path, '.', name())" />
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:value-of select="name()" />
-          </xsl:otherwise>
-        </xsl:choose>
-      </xsl:with-param>
-    </xsl:call-template>
-  </xsl:template>
-
+  <!-- outputs JSON value: string, boolean or numeric -->
   <xsl:template name="value">
     <xsl:param name="path" />
     <xsl:param name="value" />
