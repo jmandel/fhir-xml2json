@@ -51,7 +51,7 @@
   </xsl:template>
 
   <xsl:template match="//element">
-    <xsl:variable name="type" select="definition/type/code/@value" />
+    <xsl:variable name="type" select="definition/type/code/@value | definition/nameReference/@value" />
     <xsl:variable name="path" select="path/@value" />
     <xsl:variable name="min" select="definition/min/@value" />
     <xsl:variable name="max" select="definition/max/@value" />
